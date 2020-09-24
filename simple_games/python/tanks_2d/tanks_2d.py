@@ -3,7 +3,7 @@ import math as m
 import time
 import random
 
-from typing import List
+from typing import List, Union
 
 BOARD_X = 1280
 BOARD_Y = 960
@@ -32,10 +32,15 @@ class Player:
     def get_point_centre_of_tank(x_, y_, w_, h_):
         return int(x_ + w_ / 2), int(y_ + h_ / 2)
 
+    def set_points_collision_model(self):
+        self.collision_model_x = (self.centre_x - self._size_tank // 2, self.centre_x + self._size_tank // 2)
+        self.collision_model_y = (self.centre_y - self._size_tank // 2, self.centre_y + self._size_tank // 2)
+
     def __init__(self, x, y, name, tank_img, size_tank=50):
         self.name = name
         self.x = x
         self.y = y
+        self.score = 0
         self._size_tank = size_tank
         self._tank_img = tank_img
         self.height = int(self._size_tank * m.sqrt(2))
@@ -46,6 +51,8 @@ class Player:
         self.exist = True
 
         self.centre_x, self.centre_y = self.get_point_centre_of_tank(self.x, self.y, self.width, self.height)
+        self.collision_model_x = (self.centre_x - self._size_tank // 2, self.centre_x + self._size_tank // 2)
+        self.collision_model_y = (self.centre_y - self._size_tank // 2, self.centre_y + self._size_tank // 2)
 
         self.time_prev_shot = 0
         self.gun_reload = 1
@@ -62,19 +69,27 @@ class Player:
             scr.blit(rot_center(self._tank_img, -45), (self.x, self.y))
         elif self.direction['right']:
             scr.blit(rot_center(self._tank_img, -90),
-                     (int(self.x + (m.sqrt(2) - 1) / 2 * self._size_tank), int(self.y + (m.sqrt(2) - 1) / 2 * self._size_tank)))
+                     (int(self.x + (m.sqrt(2) - 1) / 2 * self._size_tank),
+                      int(self.y + (m.sqrt(2) - 1) / 2 * self._size_tank)))
         elif self.direction['left']:
             scr.blit(rot_center(self._tank_img, 90),
-                     (int(self.x + (m.sqrt(2) - 1) / 2 * self._size_tank), int(self.y + (m.sqrt(2) - 1) / 2 * self._size_tank)))
+                     (int(self.x + (m.sqrt(2) - 1) / 2 * self._size_tank),
+                      int(self.y + (m.sqrt(2) - 1) / 2 * self._size_tank)))
         elif self.direction['up']:
             scr.blit(rot_center(self._tank_img, 0),
-                     (int(self.x + (m.sqrt(2) - 1) / 2 * self._size_tank), int(self.y + (m.sqrt(2) - 1) / 2 * self._size_tank)))
+                     (int(self.x + (m.sqrt(2) - 1) / 2 * self._size_tank),
+                      int(self.y + (m.sqrt(2) - 1) / 2 * self._size_tank)))
         elif self.direction['down']:
             scr.blit(rot_center(self._tank_img, 180),
-                     (int(self.x + (m.sqrt(2) - 1) / 2 * self._size_tank), int(self.y + (m.sqrt(2) - 1) / 2 * self._size_tank)))
+                     (int(self.x + (m.sqrt(2) - 1) / 2 * self._size_tank),
+                      int(self.y + (m.sqrt(2) - 1) / 2 * self._size_tank)))
 
         if DEBUG:
             pygame.draw.rect(scr, (0, 255, 0), (self.x, self.y, self.width, self.height), 1)
+            pygame.draw.circle(scr, (255, 0, 0), (self.collision_model_x[0], self.collision_model_y[0]), 3)
+            pygame.draw.circle(scr, (255, 0, 0), (self.collision_model_x[1], self.collision_model_y[1]), 3)
+            pygame.draw.circle(scr, (255, 0, 0), (self.collision_model_x[0], self.collision_model_y[1]), 3)
+            pygame.draw.circle(scr, (255, 0, 0), (self.collision_model_x[1], self.collision_model_y[0]), 3)
 
     def move(self, keys):
         if keys[pygame.K_s] and keys[pygame.K_a] and self.x > 0 and self.y < BOARD_Y - self.height:
@@ -107,6 +122,7 @@ class Player:
             self.direction['right'], self.direction['left'], self.direction['up'], self.direction['down'] = 0, 1, 0, 0
 
         self.centre_x, self.centre_y = self.get_point_centre_of_tank(self.x, self.y, self.width, self.height)
+        self.set_points_collision_model()
 
     def recharge(self):
         if int(time.time()) - self.time_prev_shot >= self.gun_reload:
@@ -165,11 +181,12 @@ class Enemy(Player):
         self.speed = 5
 
     def move(self, keys=None):
-        if self.x < 0 or self.x > BOARD_X or self.y < 0 or self.y > BOARD_Y:
+        if self.x < -self._size_tank or self.x > BOARD_X or self.y < 0 or self.y > BOARD_Y:
             self.exist = False
 
         self.x -= self.speed
         self.centre_x, self.centre_y = self.get_point_centre_of_tank(self.x, self.y, self.width, self.height)
+        self.set_points_collision_model()
 
     def draw(self, scr):
         scr.blit(rot_center(self._tank_img, -90),
@@ -178,6 +195,10 @@ class Enemy(Player):
 
         if DEBUG:
             pygame.draw.rect(scr, (0, 255, 0), (self.x, self.y, self.width, self.height), 1)
+            pygame.draw.circle(scr, (255, 0, 0), (self.collision_model_x[0], self.collision_model_y[0]), 3)
+            pygame.draw.circle(scr, (255, 0, 0), (self.collision_model_x[1], self.collision_model_y[1]), 3)
+            pygame.draw.circle(scr, (255, 0, 0), (self.collision_model_x[0], self.collision_model_y[1]), 3)
+            pygame.draw.circle(scr, (255, 0, 0), (self.collision_model_x[1], self.collision_model_y[0]), 3)
 
 
 class ManagerEnemies:
@@ -195,10 +216,63 @@ class ManagerEnemies:
             self.time_prev_revival = time.time()
             self.revival = False
             enemies.append(Enemy(f"en_{self.name_enemies}", self.tank_img))
+            self.name_enemies += 1
 
     def recharge(self):
         if int(time.time()) - self.time_prev_revival >= self.respawn_time:
             self.revival = True
+
+
+class ManagerCollisions:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def get_collision_between_tanks(player_: Player, enemies_: List[Enemy]):
+        pl_x_l, pl_x_r = player_.collision_model_x
+        pl_y_u, pl_y_d = player_.collision_model_y
+        for enemy_ in enemies_:
+            en_x_l, en_x_r = enemy_.collision_model_x
+            en_y_d, en_y_u = enemy_.collision_model_y
+            if (en_x_r >= pl_x_r >= en_x_l and en_y_d <= pl_y_d <= en_y_u or
+                    en_x_r >= pl_x_r >= en_x_l and en_y_d <= pl_y_u <= en_y_u or
+                    en_x_r >= pl_x_l >= en_x_l and en_y_d <= pl_y_d <= en_y_u or
+                    en_x_r >= pl_x_l >= en_x_l and en_y_d <= pl_y_u <= en_y_u):
+                player_.exist = False
+                enemy_.exist = False
+                break
+
+    @staticmethod
+    def get_collision_tank_with_bullets(tank_: Union[Player, Enemy], bullets_):
+        t_x_l, t_x_r = tank_.collision_model_x
+        t_y_d, t_y_u = tank_.collision_model_y
+        for bullet in bullets_:
+            b_x, b_y = bullet.x, bullet.y
+            if t_x_l <= b_x <= t_x_r and t_y_d <= b_y <= t_y_u and tank_.name != bullet.source_name:
+                tank_.exist = False
+                bullet.exist = False
+
+
+def end_game(scr):
+    scr.fill((0, 0, 0))
+    f1 = pygame.font.SysFont('serif', 30)
+    f2 = pygame.font.SysFont('serif', 48)
+    text1 = f2.render("GAME OVER!", 10, (180, 180, 0))
+    text2 = f1.render("Press Space to Quit", 10, (180, 180, 0))
+    scr.blit(text1, (BOARD_X // 2 - 200, BOARD_Y // 2 - 200))
+    scr.blit(text2, (BOARD_X // 2 - 200, BOARD_Y // 2))
+    pygame.display.update()
+    pygame.time.wait(2000)
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                break
+
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_SPACE]:
+            break
+
+    return False
 
 
 def draw_window(scr, bg_img, plr: Player, enemies: List[Enemy], bllts: List[Bullet]):
@@ -234,6 +308,8 @@ def main():
     enemies = []
     manager_enemies = ManagerEnemies(5, 2, enemy_img)
 
+    manager_collisions = ManagerCollisions()
+
     while running:
         pygame.time.delay(_time)
 
@@ -248,9 +324,6 @@ def main():
         player.move(keys)
         player.recharge()
 
-        print(f"len enemies {len(enemies)}")
-        print(f"len bullets {len(bullets)}")
-
         manager_enemies.control_populations(enemies)
 
         for enemy in enemies:
@@ -259,13 +332,21 @@ def main():
             if enemy.gun_ready:
                 bullets.append(enemy.take_a_shot())
 
+            manager_collisions.get_collision_tank_with_bullets(enemy, bullets)
+
         for bullet in bullets:
             bullet.move()
+
+        manager_collisions.get_collision_tank_with_bullets(player, bullets)
+        manager_collisions.get_collision_between_tanks(player, enemies)
 
         remove_obj(bullets)
         remove_obj(enemies)
 
         draw_window(screen, bg_image, player, enemies, bullets)
+
+        if not player.exist:
+            running = end_game(screen)
 
 
 if __name__ == "__main__":
